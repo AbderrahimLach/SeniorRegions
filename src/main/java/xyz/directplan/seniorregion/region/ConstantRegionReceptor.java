@@ -13,6 +13,7 @@ public record ConstantRegionReceptor(UserManager userManager, RegionManager regi
 
     @Override
     public void run() {
+        // I could use a workload for this to make it distribute work efficiently.
         Collection<User> users = userManager.getUsers().values();
         if(users.isEmpty()) return;
 

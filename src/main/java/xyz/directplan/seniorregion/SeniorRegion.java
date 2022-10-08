@@ -50,7 +50,6 @@ public final class SeniorRegion extends JavaPlugin {
     @Override
     public void onDisable() {
         configHandler.saveConfigurations();
-        userManager.saveAllUsers();
         regionManager.shutdown();
 
         storage.close();

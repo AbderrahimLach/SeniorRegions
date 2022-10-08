@@ -28,7 +28,8 @@ public enum MessageConfigKeys implements ConfigEntry {
     REGION_WAND_SECOND_POSITION_SET("region-want-second-position-set", "&aSecond position set!"),
     REGION_DOES_NOT_EXIST("region-not-found", "&cThis region does not exist."),
 
-
+    REGION_ENTERED("region-entered", "&aYou have entered the &e%region%&a region!"),
+    REGION_LEFT("region-left", "&cYou have left the &e%region%&c region!")
     ;
     private final String key;
     private final boolean forcedEntryDeclaration;

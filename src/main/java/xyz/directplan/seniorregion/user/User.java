@@ -5,8 +5,9 @@ import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
-import xyz.directplan.seniorregion.region.PairedPositions;
+import xyz.directplan.seniorregion.region.RegionPositions;
 import xyz.directplan.seniorregion.region.Region;
+import xyz.directplan.seniorregion.region.procedure.RegionProcedure;
 import xyz.directplan.seniorregion.utility.PluginUtility;
 
 import java.util.HashSet;
@@ -26,9 +27,11 @@ public class User {
     private Player player;
     private boolean online;
 
-    private final PairedPositions wandSelection = new PairedPositions();
-    private Region currentRegion;
+    private final RegionPositions wandSelection = new RegionPositions();
     private final Set<Region> ownedRegions = new HashSet<>();
+
+    private Region currentRegion;
+    private RegionProcedure currentProcedure;
 
     public String getName() {
         if(player != null) return player.getName();

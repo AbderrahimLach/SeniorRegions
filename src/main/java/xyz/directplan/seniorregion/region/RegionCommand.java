@@ -31,9 +31,17 @@ public class RegionCommand extends BaseCommand {
     }
 
     @Subcommand("create")
+    @CommandPermission("region.create")
     @Syntax("<name>")
     public void onRegionCreate(User user, String name) {
         regionManager.createRegion(user, name);
+    }
+
+    @Subcommand("delete")
+    @CommandPermission("region.delete")
+    @Syntax("<name>")
+    public void onRegionDelete(User user, Region region) {
+        regionManager.deleteRegion(user, region);
     }
 
     @Subcommand("wand")

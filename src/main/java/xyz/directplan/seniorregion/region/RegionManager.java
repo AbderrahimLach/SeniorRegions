@@ -1,5 +1,6 @@
 package xyz.directplan.seniorregion.region;
 
+import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -18,9 +19,6 @@ import xyz.directplan.seniorregion.user.UserManager;
 import xyz.directplan.seniorregion.utility.PluginUtility;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * @author DirectPlan
@@ -28,14 +26,13 @@ import java.util.concurrent.Executors;
 public class RegionManager {
 
     private Map<String, Region> regions = new HashMap<>();
-    private final Set<String> deletedRegions = new HashSet<>();
+    @Getter private final Set<UUID> deletedRegions = new HashSet<>();
+    @Getter private final Set<UUID> removedWhitelists = new HashSet<>();
 
     private final SeniorRegion plugin;
     private final Storage storage;
     private final UserManager userManager;
     private final MenuManager menuManager;
-
-    private final ExecutorService executorService;
 
     public RegionManager(SeniorRegion plugin) {
         this.plugin = plugin;
@@ -43,15 +40,15 @@ public class RegionManager {
         userManager = plugin.getUserManager();
         menuManager = plugin.getMenuManager();
 
-        executorService = Executors.newFixedThreadPool(10);
-
     }
 
 
     public void initialize() {
         loadRegions();
 
-        plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, new ConstantRegionReceptor(userManager, this), 20L, 20L);
+        plugin.getServer().getPluginManager().registerEvents(new RegionListener(userManager, this), plugin);
+        // I guess 0.5 seconds period is perfect?
+        plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, new ConstantRegionReceptor(userManager, this), 20L, 10L);
     }
 
     public void shutdown() {
@@ -62,8 +59,8 @@ public class RegionManager {
         return regions.get(name);
     }
 
-    public boolean isDeleted(String regionName) {
-        return deletedRegions.contains(regionName);
+    public boolean isDeleted(UUID regionId) {
+        return deletedRegions.contains(regionId);
     }
 
     public void createRegion(User issuer, String name) {
@@ -75,13 +72,13 @@ public class RegionManager {
             MessageConfigKeys.REGION_ALREADY_EXIST.sendMessage(issuer);
             return;
         }
-        if(isDeleted(name)) deletedRegions.remove(name);
 
-        PairedPositions wandSelection = issuer.getWandSelection();
+        RegionPositions wandSelection = issuer.getWandSelection();
         Region region = new Region(issuer.getUuid(), name, wandSelection.clone());
 
         regions.put(name, region);
         issuer.getOwnedRegions().add(region);
+        issuer.resetWandSelection();
         MessageConfigKeys.REGION_CREATED.sendMessage(issuer, new Replacement("name", name));
     }
 
@@ -104,9 +101,8 @@ public class RegionManager {
 
         String regionName = region.getName();
         regions.remove(regionName);
-        deletedRegions.add(regionName);
+        deletedRegions.add(region.getId());
 
-        issuer.getOwnedRegions().remove(region);
         MessageConfigKeys.REGION_DELETED.sendMessage(issuer, new Replacement("name", regionName));
     }
 
@@ -114,13 +110,21 @@ public class RegionManager {
         Player player = user.getPlayer();
 
         for(Region region : regions.values()) {
+            String regionName = region.getName();
+
             Region currentRegion = user.getCurrentRegion();
+
+            if(!isInsideRegion(player, region)) {
+                if(currentRegion == region) {
+                    MessageConfigKeys.REGION_LEFT.sendMessage(user, new Replacement("region", regionName));
+                    user.setCurrentRegion(null);
+                }
+                continue;
+            }
             if(currentRegion == region) continue;
 
-            if(!isInsideRegion(player, region)) continue;
-
             user.setCurrentRegion(region);
-            user.sendMessage("&aYou are now in the &e" + region.getName() + "&a region!");
+            MessageConfigKeys.REGION_ENTERED.sendMessage(user, new Replacement("region", regionName));
         }
     }
 
@@ -129,7 +133,7 @@ public class RegionManager {
     }
 
     public boolean isInteractionAllowed(User user, Location interactLocation) {
-        boolean allowed = false;
+        boolean allowed = true;
         for(Region region : regions.values()) {
             if(!isInsideRegion(interactLocation, region)) continue;
             allowed = hasRegionAccess(user, region);
@@ -139,6 +143,10 @@ public class RegionManager {
     }
 
     public void addWhitelist(User issuer, Region region, OfflinePlayer player) {
+        if(issuer.getPlayer() == player) {
+            issuer.sendMessage("&cYou cannot whitelist yourself.");
+            return;
+        }
         if(region == null) {
             MessageConfigKeys.REGION_DOES_NOT_EXIST.sendMessage(issuer);
             return;
@@ -155,6 +163,7 @@ public class RegionManager {
             return;
         }
         region.addWhitelist(playerUuid);
+        removedWhitelists.remove(playerUuid);
         MessageConfigKeys.REGION_WHITELIST_ADDED.sendMessage(issuer, new Replacement("player", player.getName()), new Replacement("region", region.getName()));
     }
 
@@ -174,6 +183,8 @@ public class RegionManager {
             MessageConfigKeys.PLAYER_NOT_WHITELISTED.sendMessage(issuer);
             return;
         }
+
+        removedWhitelists.add(playerUuid);
         region.removeWhitelist(playerUuid);
         MessageConfigKeys.REGION_WHITELIST_REMOVED.sendMessage(issuer, new Replacement("player", player.getName()), new Replacement("region", region.getName()));
 
@@ -224,11 +235,14 @@ public class RegionManager {
     }
 
     public void loadRegions() {
-        CompletableFuture.supplyAsync(storage::loadRegions, executorService).thenAccept(regions -> this.regions = regions);
+        plugin.getLogger().info("Loading regions...");
+        regions = storage.loadRegions();
+        plugin.getLogger().info("Loaded " + regions.size() + " regions!");
     }
 
     public void saveRegions() {
-        CompletableFuture.runAsync(() -> storage.saveRegions(regions), executorService);
+        plugin.getLogger().info("Saving regions...");
+        storage.saveRegions(regions, this);
     }
 
     public Collection<Region> getRegions() {

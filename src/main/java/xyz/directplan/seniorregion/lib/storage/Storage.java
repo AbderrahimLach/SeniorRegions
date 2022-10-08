@@ -5,10 +5,9 @@ import xyz.directplan.seniorregion.SeniorRegion;
 import xyz.directplan.seniorregion.lib.storage.impl.SQLStorage;
 import xyz.directplan.seniorregion.lib.storage.misc.ConnectionData;
 import xyz.directplan.seniorregion.region.Region;
-import xyz.directplan.seniorregion.user.User;
+import xyz.directplan.seniorregion.region.RegionManager;
 
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * @author DirectPlan
@@ -40,20 +39,12 @@ public class Storage {
         repository.connect();
     }
 
-    public User loadPlayer(UUID uuid) {
-        return repository.loadUser(uuid);
-    }
-
-    public void saveUser(User user) { // Make this an async completable future
-        repository.saveUser(user);
-    }
-
     public Map<String, Region> loadRegions() {
         return repository.loadRegions();
     }
 
-    public void saveRegions(Map<String, Region> regions) {
-        repository.saveRegions(regions);
+    public void saveRegions(Map<String, Region> regions, RegionManager regionManager) {
+        repository.saveRegions(regions, regionManager);
     }
 
     public void close() {

@@ -3,7 +3,8 @@ package xyz.directplan.seniorregion.user;
 import lombok.Getter;
 import org.bukkit.entity.Player;
 import xyz.directplan.seniorregion.SeniorRegion;
-import xyz.directplan.seniorregion.lib.storage.Storage;
+import xyz.directplan.seniorregion.region.Region;
+import xyz.directplan.seniorregion.region.RegionManager;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -22,15 +23,15 @@ public class UserManager {
     @Getter
     private final Map<UUID, User> users = new HashMap<>();
 
+    private final SeniorRegion plugin;
     private final Logger logger;
-    private final Storage storage;
     private final ExecutorService executorService;
 
     public UserManager(SeniorRegion plugin) {
+        this.plugin = plugin;
         logger = plugin.getLogger();
 
         executorService = Executors.newFixedThreadPool(10);
-        storage = plugin.getStorage();
     }
 
     public User getUser(Player player) {
@@ -44,36 +45,23 @@ public class UserManager {
     public void handleJoin(Player player, Consumer<User> completion) {
         UUID uuid = player.getUniqueId();
         logger.info("Loading user " + player.getName() + "...");
-        loadUser(uuid, user -> {
+
+        RegionManager regionManager = plugin.getRegionManager();
+
+        CompletableFuture.runAsync(() -> {
+            User user = new User(uuid);
             user.setPlayer(player);
-            users.put(uuid, user);
-            if(completion != null) completion.accept(user);
-        });
-    }
+            for(Region region : regionManager.getRegions()) {
+                if(!region.getOwner().equals(uuid)) continue;
 
-    public void loadUser(UUID uuid, Consumer<User> consumer) {
-        CompletableFuture.supplyAsync(() -> {
-            User user = getUser(uuid);
-            if(user == null) {
-                user = storage.loadPlayer(uuid);
+                user.getOwnedRegions().add(region);
             }
-            return user;
-        }, executorService).thenAccept(consumer);
+            users.put(uuid, user);
+            completion.accept(user);
+        }, executorService);
     }
-
 
     public void handleQuit(Player player) {
-        User user = users.remove(player.getUniqueId());
-        user.setOnline(false);
-        saveUser(user);
-    }
-
-    public void saveUser(User user) {
-        CompletableFuture.runAsync(() -> storage.saveUser(user), executorService);
-    }
-
-    /* This bulk update operation is synchronous. Should only be executed on shutdown */
-    public void saveAllUsers() {
-        users.forEach((uuid, user) -> saveUser(user));
+        users.remove(player.getUniqueId());
     }
 }

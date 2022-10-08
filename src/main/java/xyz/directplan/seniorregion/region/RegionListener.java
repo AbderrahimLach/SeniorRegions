@@ -6,10 +6,11 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
-import xyz.directplan.seniorregion.SeniorRegion;
 import xyz.directplan.seniorregion.config.MessageConfigKeys;
+import xyz.directplan.seniorregion.region.procedure.RegionProcedure;
 import xyz.directplan.seniorregion.user.User;
 import xyz.directplan.seniorregion.user.UserManager;
 import xyz.directplan.seniorregion.utility.PluginUtility;
@@ -17,41 +18,46 @@ import xyz.directplan.seniorregion.utility.PluginUtility;
 /**
  * @author DirectPlan
  */
-public class RegionListener implements Listener {
+public record RegionListener(UserManager userManager, RegionManager regionManager) implements Listener {
 
-    private final UserManager userManager;
-    private final RegionManager regionManager;
-
-    public RegionListener(SeniorRegion plugin) {
-        userManager = plugin.getUserManager();
-        regionManager = plugin.getRegionManager();
-    }
     @EventHandler
     public void onInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
         Block clickedBlock = event.getClickedBlock();
         ItemStack item = event.getItem();
-        if(clickedBlock == null) return;
+        if (clickedBlock == null) return;
 
         User user = userManager.getUser(player);
 
-        if(!regionManager.isInteractionAllowed(user, clickedBlock.getLocation())) {
+        if (!(player.hasPermission("region.bypass") && regionManager.isInteractionAllowed(user, clickedBlock.getLocation()))) {
             event.setCancelled(true);
-            return;
         }
-        if((item != null && item.getType() == Material.WOODEN_AXE) && PluginUtility.hasItemNBTKey(item, "region-wand")) {
+        if ((item != null && item.getType() == Material.WOODEN_AXE) && PluginUtility.hasItemNBTKey(item, "region-wand")) {
+            event.setCancelled(true);
             Action action = event.getAction();
-            if(action == Action.LEFT_CLICK_BLOCK) {
+            if (action == Action.LEFT_CLICK_BLOCK) {
                 user.setFirstWandSelection(clickedBlock.getLocation());
                 MessageConfigKeys.REGION_WAND_FIRST_POSITION_SET.sendMessage(user);
                 return;
             }
 
-            if(action == Action.RIGHT_CLICK_BLOCK) {
-                user.setFirstWandSelection(clickedBlock.getLocation());
+            if (action == Action.RIGHT_CLICK_BLOCK) {
+                user.setSecondWandSelection(clickedBlock.getLocation());
                 MessageConfigKeys.REGION_WAND_SECOND_POSITION_SET.sendMessage(user);
             }
-            event.setCancelled(true);
         }
+    }
+
+    @EventHandler
+    public void onChat(AsyncPlayerChatEvent event) {
+        Player player = event.getPlayer();
+
+        User user = userManager.getUser(player);
+        RegionProcedure regionProcedure = user.getCurrentProcedure();
+        if(regionProcedure == null) return;
+
+        event.setCancelled(true);
+        regionProcedure.execute(user, event.getMessage());
+        user.setCurrentProcedure(null);
     }
 }

@@ -11,11 +11,11 @@ import org.bukkit.Location;
 @AllArgsConstructor
 @Getter
 @Setter
-public class PairedPositions implements Cloneable {
+public class RegionPositions implements Cloneable {
 
     private Location firstPosition, secondPosition;
 
-    public PairedPositions() {
+    public RegionPositions() {
         this(null, null);
     }
 
@@ -24,9 +24,9 @@ public class PairedPositions implements Cloneable {
     }
 
     @Override
-    public PairedPositions clone() {
+    public RegionPositions clone() {
         try {
-            return (PairedPositions) super.clone();
+            return (RegionPositions) super.clone();
         } catch (CloneNotSupportedException e) {
             throw new AssertionError();
         }

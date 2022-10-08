@@ -1,7 +1,7 @@
 package xyz.directplan.seniorregion.region;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.bukkit.Location;
 
 import java.util.ArrayList;
@@ -11,15 +11,27 @@ import java.util.UUID;
 /**
  * @author DirectPlan
  */
-@RequiredArgsConstructor
 @Getter
 public class Region {
 
-    private final UUID owner;
-    private final String name;
+    private final UUID id, owner;
+    @Setter private String name;
 
-    private final PairedPositions regionPositions;
+    @Setter private RegionPositions regionPositions;
     private final List<UUID> whitelistedPlayers = new ArrayList<>();
+
+    @Setter private boolean removed;
+
+    public Region(UUID id, UUID owner, String name, RegionPositions regionPositions) {
+        this.id = id;
+        this.owner = owner;
+        this.name = name;
+        this.regionPositions = regionPositions;
+    }
+
+    public Region(UUID owner, String name, RegionPositions regionPositions) {
+        this(UUID.randomUUID(), owner, name, regionPositions);
+    }
 
     public void addWhitelist(UUID uuid) {
         whitelistedPlayers.add(uuid);

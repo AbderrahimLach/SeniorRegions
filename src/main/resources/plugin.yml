@@ -1,0 +1,5 @@
+name: Region
+version: ${project.version}
+main: xyz.directplan.seniorregion.SeniorRegion
+description: ${project.description}
+api-version: 1.19

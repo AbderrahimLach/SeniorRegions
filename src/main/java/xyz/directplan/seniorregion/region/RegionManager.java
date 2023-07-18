@@ -48,7 +48,7 @@ public class RegionManager {
 
         plugin.getServer().getPluginManager().registerEvents(new RegionListener(userManager, this), plugin);
         // I guess 0.5 seconds period is perfect?
-        plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, new ConstantRegionReceptor(userManager, this), 20L, 10L);
+        plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, new ConstantRegionUpdater(userManager, this), 20L, 10L);
     }
 
     public void shutdown() {

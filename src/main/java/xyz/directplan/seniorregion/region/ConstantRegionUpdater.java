@@ -8,7 +8,7 @@ import java.util.Collection;
 /**
  * @author DirectPlan
  */
-public record ConstantRegionReceptor(UserManager userManager, RegionManager regionManager) implements Runnable {
+public record ConstantRegionUpdater(UserManager userManager, RegionManager regionManager) implements Runnable {
 
 
     @Override
